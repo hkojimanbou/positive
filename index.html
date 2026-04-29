@@ -58,14 +58,15 @@
     .stat-label { font-size: 0.8rem; color: #E67E22; margin-bottom: 5px; }
     .stat-value { font-size: 1.5rem; font-weight: 900; color: #D35400; }
     .floating-word {
-      position: fixed; color: rgba(255, 255, 255, 0.8);
+      position: fixed; color: #FF4500;
       font-weight: 900; pointer-events: none; white-space: nowrap;
       animation: floatUp 3s ease-out forwards; z-index: 100;
+      text-shadow: 1px 1px 0 #fff;
     }
     @keyframes floatUp {
       0% { transform: translateY(0) scale(0.5); opacity: 0; }
       20% { opacity: 1; transform: translateY(-20px) scale(1.2); }
-      100% { transform: translateY(-150px) scale(1); opacity: 0; }
+      100% { transform: translateY(-250px) scale(1); opacity: 0; }
     }
     footer { margin-top: auto; padding: 20px; color: #D35400; font-weight: 700; font-size: 0.9rem; }
   </style>
@@ -96,12 +97,13 @@
 
   <script>
     let score = 0;
-    const words = ["最高！", "無敵！", "優勝！", "天才！", "鬼才！", "覇者！", "尊い！", "YES!", "最高峰！", "神！"];
+    const words = ["最高！", "無敵！", "優勝！", "天才！", "鬼才！", "覇者！", "尊い！", "YES!", "最高峰！", "神！", "感謝！", "おめでとう！"];
     const statuses = [
       { threshold: 0, text: "絶好調！", color: "#D35400" },
       { threshold: 10, text: "輝いてる！", color: "#FF4500" },
       { threshold: 30, text: "銀河一！", color: "#FF00FF" },
-      { threshold: 50, text: "存在が奇跡！", color: "#FF1493" }
+      { threshold: 50, text: "存在が奇跡！", color: "#FF1493" },
+      { threshold: 100, text: "宇宙の創造主！", color: "#8A2BE2" }
     ];
 
     function boostVibe() {
@@ -119,7 +121,7 @@
       div.innerText = text;
       div.style.left = (Math.random() * 80 + 10) + 'vw';
       div.style.top = (Math.random() * 20 + 40) + 'vh';
-      div.style.fontSize = (Math.random() * 1.5 + 1) + 'rem';
+      div.style.fontSize = (Math.random() * 1.5 + 1.2) + 'rem';
       document.body.appendChild(div);
       setTimeout(() => div.remove(), 3000);
     }
@@ -136,9 +138,10 @@
       statusEl.innerText = currentStatus.text;
       statusEl.style.color = currentStatus.color;
       
-      if (score >= 50) levelEl.innerText = "現人神";
-      else if (score >= 30) levelEl.innerText = "聖人";
-      else if (score >= 10) levelEl.innerText = "豪傑";
+      if (score >= 100) levelEl.innerText = "神";
+      else if (score >= 50) levelEl.innerText = "聖人";
+      else if (score >= 30) levelEl.innerText = "豪傑";
+      else if (score >= 10) levelEl.innerText = "達人";
     }
   </script>
 </body>
