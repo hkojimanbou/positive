@@ -339,4 +339,168 @@
         el.style.transform = 'translate(-50%,-50%) translateY(' + dy + 'px) scale(' + scale + ') rotate(' + rot + 'deg)';
         el.style.opacity = t < 0.2 ? (t/0.2) : (1 - (t-0.2)/0.8);
         if (t < 1) requestAnimationFrame(animate);
-      
+        else el.remove();
+      }
+      requestAnimationFrame(animate);
+    }
+
+    // ===== タイピング =====
+    function typeText(el, text, speed, cb) {
+      let i = 0;
+      const iv = setInterval(() => {
+        el.textContent += text[i++];
+        if (i >= text.length) { clearInterval(iv); if (cb) setTimeout(cb, 300); }
+      }, speed);
+    }
+
+    // ===== 状態 =====
+    let phase = 'welcome';
+    let typeIv = null;
+    let lastClickTime = 0;
+    let rapidCount = 0;
+    let isRapid = false;
+    let rapidEndTimer = null;
+    let usedShowers = [];
+
+    function getShower() {
+      if (usedShowers.length >= rawShowers.length) usedShowers = [];
+      const remaining = rawShowers.filter(s => !usedShowers.includes(s));
+      const s = remaining[Math.floor(Math.random() * remaining.length)];
+      usedShowers.push(s);
+      // 手動\nが入っているものはそのまま、ないものだけfmt適用
+      // rawShowers内は全て手動\nで改行設定済みのためfmt不要
+      return s;
+    }
+
+    // ===== 起動シーケンス =====
+    // WELCOME表示（二重防止のためフラグ管理）
+    let welcomeStarted = false;
+    setTimeout(() => {
+      if (welcomeStarted) return;
+      welcomeStarted = true;
+      const wt = document.getElementById('welcome-text');
+      wt.textContent = '';
+      typeText(wt, 'WELCOME', 120, null);
+    }, 300);
+
+    // ===== シャワー表示 =====
+    function showShower() {
+      if (phase === 'welcome') {
+        // 初回ボタン押下：WELCOMEを消して3行intro表示
+        document.getElementById('welcome-area').classList.add('hidden');
+        document.getElementById('intro-area').classList.remove('hidden');
+        phase = 'intro';
+        // ボタン名を変更
+        document.getElementById('btn-label').innerHTML = 'もっとシャワー浴びる！<br><span style="font-size:0.85rem;font-weight:700;letter-spacing:0.05em">Push！ Push！</span>';
+        // 3行タイピング
+        typeText(document.getElementById('intro-1'), introTexts[0], 60, () =>
+          typeText(document.getElementById('intro-2'), introTexts[1], 60, () =>
+            typeText(document.getElementById('intro-3'), introTexts[2], 60, null)
+          )
+        );
+        return;
+      }
+      if (phase === 'intro') {
+        document.getElementById('intro-area').classList.add('hidden');
+        document.getElementById('shower-area').classList.remove('hidden');
+        phase = 'shower';
+      }
+      document.getElementById('clap-area').classList.add('hidden');
+      document.getElementById('replay-btn').classList.remove('hidden');
+      const el = document.getElementById('shower-text');
+      el.classList.remove('hidden');
+      el.textContent = '';
+      if (typeIv) clearInterval(typeIv);
+      const text = getShower();
+      lastShowerText = text;
+      let i = 0;
+      typeIv = setInterval(() => {
+        el.textContent += text[i++];
+        if (i >= text.length) clearInterval(typeIv);
+      }, 45);
+    }
+
+    // ===== 連打ロジック =====
+    function handleRapid() {
+      if (!isRapid) {
+        isRapid = true;
+        if (typeIv) clearInterval(typeIv);
+        document.getElementById('shower-text').classList.add('hidden');
+        document.getElementById('clap-area').classList.remove('hidden');
+        if (phase === 'intro') {
+          document.getElementById('intro-area').classList.add('hidden');
+          document.getElementById('shower-area').classList.remove('hidden');
+          phase = 'shower';
+        }
+      }
+      clearTimeout(rapidEndTimer);
+      rapidEndTimer = setTimeout(() => { // 0.3秒
+        isRapid = false;
+        rapidCount = 0;
+        showShower();
+      }, 300);
+    }
+
+    // ===== ボタンクリック =====
+    document.getElementById('more-shower-btn').addEventListener('click', () => {
+      playTapSound();
+      if (navigator.vibrate) navigator.vibrate(20);
+
+      // YES!! 3か所から発生
+      spawnPopup('YES!!', window.innerWidth / 2, window.innerHeight / 3);
+      setTimeout(() => spawnPopup('YES!!', window.innerWidth * 0.25, window.innerHeight / 2), 150);
+      setTimeout(() => spawnPopup('YES!!', window.innerWidth * 0.75, window.innerHeight / 2.5), 300);
+
+      const now = Date.now();
+      if (now - lastClickTime < 1000) {
+        rapidCount++;
+      } else {
+        rapidCount = 1;
+      }
+      lastClickTime = now;
+
+      if (rapidCount >= 2) {
+        handleRapid();
+      } else {
+        if (!isRapid) showShower();
+      }
+    });
+
+    // ===== もう1回ボタン =====
+    document.getElementById('replay-btn').addEventListener('click', () => {
+      playTapSound();
+      if (navigator.vibrate) navigator.vibrate(20);
+      if (!lastShowerText) return;
+      const el = document.getElementById('shower-text');
+      el.classList.remove('hidden');
+      document.getElementById('clap-area').classList.add('hidden');
+      el.textContent = '';
+      if (typeIv) clearInterval(typeIv);
+      let i = 0;
+      typeIv = setInterval(() => {
+        el.textContent += lastShowerText[i++];
+        if (i >= lastShowerText.length) clearInterval(typeIv);
+      }, 45);
+      spawnPopup('もう1回！', window.innerWidth / 2, window.innerHeight / 2);
+    });
+
+    // ===== 画面タップ（ボタン以外）=====
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('#more-shower-btn') || e.target.closest('.spotify-btn')) return;
+      // カード内クリックも含めて全体で反応する
+      // ポップアップ
+      spawnPopup(tapPopups[Math.floor(Math.random() * tapPopups.length)], e.clientX, e.clientY);
+      // フレーズをバック文字として流す（タップ時のみ追加）
+      const el = document.createElement('div');
+      el.className = 'floating-word';
+      el.textContent = rawPhrases[Math.floor(Math.random() * rawPhrases.length)];
+      el.style.left = Math.random() * 70 + 15 + 'vw';
+      el.style.fontSize = '1.1rem';
+      el.style.color = 'rgba(200,80,0,0.65)';
+      document.body.appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+      if (navigator.vibrate) navigator.vibrate(20);
+    });
+  </script>
+
+<div class="floating-word" style="left: 51.4196vw; font-size: 2.71267rem;">無双！</div><div class="floating-word" style="left: 23.2538vw; font-size: 1.80199rem;">最高！</div><div class="floating-word" style="left: 44.4631vw; font-size: 1.65775rem;">覇者！</div><div class="floating-word" style="left: 50.7434vw; font-size: 1.12927rem;">尊い！</div><div class="floating-word" style="left: 21.6364vw; font-size: 2.66914rem;">優勝！</div><div class="floating-word" style="left: 80.9012vw; font-size: 2.67921rem;">伝説！</div><div class="floating-word" style="left: 69.3566vw; font-size: 2.83528rem;">宇宙一！</div><div class="floating-word" style="left: 41.2413vw; font-size: 1.56313rem;">神！</div><div class="floating-word" style="left: 43.2264vw; font-size: 1.33316rem;">最高峰！</div><div class="floating-word" style="left: 58.8456vw; font-size: 1.11287rem;">完璧！</div><div class="floating-word" style="left: 61.1369vw; font-size: 2.34411rem;">無敵！</div><div class="floating-word" style="left: 34.7996vw; font-size: 2.44583rem;">最強！</div><div class="floating-word" style="left: 80.2092vw; font-size: 1.90459rem;">無双！</div><div class="floating-word" style="left: 14.0231vw; font-size: 1.04966rem;">無敵！</div><div class="floating-word" style="left: 16.1809vw; font-size: 2.15536rem;">奇跡！</div><div class="floating-word" style="left: 23.5439vw; font-size: 2.00318rem;">鬼才！</div><div class="floating-word" style="left: 47.1316vw; font-size: 1.354rem;">BOOM!</div><div class="floating-word" style="left: 51.9381vw; font-size: 2.21978rem;">神！</div><div class="floating-word" style="left: 50.7154vw; font-size: 1.73066rem;">天才！</div><div class="floating-word" style="left: 69.1332vw; font-size: 1.98504rem;">鬼才！</div><div class="floating-word" style="left: 38.4394vw; font-size: 2.03985rem;">最高峰！</div><div class="floating-word" style="left: 36.2761vw; font-size: 2.29765rem;">神！</div><div class="floating-word" style="left: 24.5354vw; font-size: 1.59069rem;">最高峰！</div><div class="floating-word" style="left: 38.8467vw; font-size: 2.4322rem;">最強！</div><div class="floating-word" style="left: 45.8815vw; font-size: 2.99077rem;">無敵！</div><div class="floating-word" style="left: 68.7536vw; font-size: 2.38136rem;">奇跡！</div><div class="floating-word" style="left: 49.8821vw; font-size: 2.52219rem;">本物！</div><div class="floating-word" style="left: 37.3475vw; font-size: 1.11724rem;">神！</div><div class="floating-word" style="left: 75.9355vw; font-size: 1.92787rem;">無敵！</div><div class="floating-word" style="left: 57.792vw; font-size: 1.82267rem;">奇跡！</div><div class="floating-word" style="left: 54.3443vw; font-size: 2.9647rem;">天才！</div><div class="floating-word" style="left: 29.7293vw; font-size: 1.98274rem;">無双！</div><div class="floating-word" style="left: 16.7558vw; font-size: 2.54382rem;">完璧！</div><div class="floating-word" style="left: 33.2893vw; font-size: 1.30402rem;">BOOM!</div><div class="floating-word" style="left: 82.1526vw; font-size: 2.08377rem;">YES!</div><div class="floating-word" style="left: 22.7881vw; font-size: 2.86267rem;">伝説！</div><div class="floating-word" style="left: 45.7332vw; font-size: 2.18675rem;">YES!</div><div class="floating-word" style="left: 25.5727vw; font-size: 1.0303rem;">鬼才！</div><div class="floating-word" style="left: 72.4075vw; font-size: 2.11282rem;">本物！</div><div class="floating-word" style="left: 70.4724vw; font-size: 2.36118rem;">鬼才！</div></body></html>
