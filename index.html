@@ -251,4 +251,28 @@
         document.getElementById('shower-area').classList.remove('hidden');
         phase = 'shower';
       }
-      const
+      const el = document.getElementById('shower-text');
+      el.classList.remove('hidden');
+      el.textContent = '';
+      if (typeIv) clearInterval(typeIv);
+      const text = getShower();
+      let i = 0;
+      typeIv = setInterval(() => {
+        el.textContent += text[i++];
+        if (i >= text.length) clearInterval(typeIv);
+      }, 45);
+    }
+
+    document.getElementById('more-shower-btn').addEventListener('click', () => {
+      playTapSound();
+      if (navigator.vibrate) navigator.vibrate(20);
+      spawnPopup('YES!!', window.innerWidth / 2, window.innerHeight / 3);
+      showShower();
+    });
+
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('#more-shower-btn') || e.target.closest('.spotify-btn')) return;
+      spawnPopup(tapPopups[Math.floor(Math.random() * tapPopups.length)], e.clientX, e.clientY);
+    });
+  </script>
+</body></html>
